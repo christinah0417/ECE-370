@@ -20,8 +20,8 @@
 #include <WiFi101.h>
 #include "arduino_secrets.h" 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = "christina0417";        // your network SSID (name)
-char pass[] = "ca11201980";    // your network password (use for WPA, or use as key for WEP)
+char ssid[] = "SSID";        // your network SSID (name)
+char pass[] = "Pwd";    // your network password (use for WPA, or use as key for WEP)
 int keyIndex = 0;                // your network key Index number (needed only for WEP)
 
 int led =  LED_BUILTIN;
