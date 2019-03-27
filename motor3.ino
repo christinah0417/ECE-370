@@ -9,7 +9,7 @@ float error;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);  
-  pinMode(11,OUTPUT);// direction of motor
+  pinMode(11,OUTPUT);// motor pins
   pinMode(12,OUTPUT);
   pinMode(5, INPUT);//IR sensor pins
   pinMode(6, INPUT);
