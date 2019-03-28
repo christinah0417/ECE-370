@@ -112,16 +112,16 @@ void loop() {
     }
 
     error = d_angle - angle;                // calculate error
-    setSpeed(Kp*error);                     // P control
+    int sp = setSpeed(Kp*error);                     // P control
     if (angle < d_angle)
     {
-      digitalWrite(11,LOW); // Forward
-      digitalWrite(12,HIGH);
+      analogWrite(11,LOW); // Forward
+      analoglWrite(12,sp);
     }
     else
     {
-      digitalWrite(11,HIGH); // Reverse
-      digitalWrite(12,LOW);
+      analogWrite(11,sp); // Reverse
+      analogWrite(12,LOW);
     }
   }
   
