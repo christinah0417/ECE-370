@@ -1,157 +1,93 @@
+
 #include <SPI.h>
 #include <WiFi101.h>
-
-char ssid[] = "ssid";        // your network SSID (name)
-char pass[] = "pass";    // your network password (use for WPA, or use as key for WEP)
-int keyIndex = 0;                // your network key Index number (needed only for WEP)
+#include <WiFiUdp.h>
+#include <math.h>
 
 int status = WL_IDLE_STATUS;
-WiFiServer server(80);
+#include "arduino_secrets.h" 
+///////please enter your sensitive data in the Secret tab/arduino_secrets.h
+char ssid[] = SECRET_SSID;        // your network SSID (name)
+char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
+int keyIndex = 0;            // your network key Index number (needed only for WEP)
 
-double tick = 0;
-boolean A, B;
+unsigned int localPort = 2390;      // local port to listen on
 
-void AP_setup()
-{
-  //Configure pins for Adafruit ATWINC1500 Feather
-  WiFi.setPins(8,7,4,2);
+  struct __attribute__((packed))  Robot
+  {
+      float velo;
+      float theta;
+      int mode;
+  }*Robot_t;
+
+char packetBuffer[255]; //buffer to hold incoming packet
+char  ReplyBuffer[] = "acknowledged";       // a string to send back
+
+WiFiUDP Udp;
+
+void setup() {
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
+  WiFi.setPins(8, 7, 4, 2);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
-  Serial.println("Access Point Web Server");
-
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
-    // don't continue
+    // don't continue:
     while (true);
   }
 
-  // by default the local IP address of will be 192.168.1.1
-  // you can override it with the following:
-  // WiFi.config(IPAddress(10, 0, 0, 1));
+  // attempt to connect to WiFi network:
+  while ( status != WL_CONNECTED) {
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+    status = WiFi.begin(ssid, pass);
 
-  // print the network name (SSID);
-  Serial.print("Creating access point named: ");
-  Serial.println(ssid);
-
-  // Create open network. Change this line if you want to create an WEP network:
-  status = WiFi.beginAP(ssid);
-  if (status != WL_AP_LISTENING) {
-    Serial.println("Creating access point failed");
-    // don't continue
-    while (true);
+    // wait 10 seconds for connection:
+    delay(10000);
   }
-
-  // wait 10 seconds for connection:
-  delay(10000);
-
-  // start the web server on port 80
-  server.begin();
-
-  // you're connected now, so print out the status
+  Serial.println("Connected to wifi");
   printWiFiStatus();
+
+  Serial.println("\nStarting connection to server...");
+  // if you get a connection, report back via serial:
+  Udp.begin(localPort);
 }
-
-void AP_loop()
-{
-   // compare the previous status to the current status
-  if (status != WiFi.status()) 
-  {
-    // it has changed update the variable
-    status = WiFi.status();
-
-    if (status == WL_AP_CONNECTED) 
-    {
-      byte remoteMac[6];
-
-      // a device has connected to the AP
-      Serial.print("Device connected to AP, MAC address: ");
-      WiFi.APClientMacAddress(remoteMac);
-      printMacAddress(remoteMac);
-    }
-    else 
-    {
-      // a device has disconnected from the AP, and we are back in listening mode
-      Serial.println("Device disconnected from AP");
-    }
-  }
-   
-}
-
-void IR_setup()
-{
-  pinMode(5, INPUT);//IR sensor pins
-  pinMode(6, INPUT);
-  attachInterrupt(digitalPinToInterrupt(5),IR1,RISING);//interrupt pins for IR sensor
-  attachInterrupt(digitalPinToInterrupt(6),IR2,RISING); 
-}
-
-void IR1()
-{
-  A = digitalRead(5); // read signal from sensor
-  if (A == HIGH) tick ++;  // count timer tick
-}
-
-void IR2()
-{
-  B = digitalRead(6); // read signal from sensor
-  if (B == HIGH) tick ++;  // count timer tick
-}
-
-void motor_setup()
-{
-  pinMode(11,OUTPUT);// direction of motor
-  pinMode(12,OUTPUT);
-}
-
-int setSpeed(float s)     //set motor speed
-{
-  if (s > 1)  s = 1.0;
-  if (s < 0) s = 0.0;
-  int out = (int)(s*255.0);
-  return out;
-}
-
-
-void struct_setup()
-{
-  
-}
-
-void IMU_setup()
-{
-  
-}
-
-void check_IMU()
-{
-  
-}
-
-void check_UDP()
-{
-  
-}
-
-void setup() {
-  Serial.begin(9600); 
-    AP_setup();
-    struct_setup();
-    IR_setup();
-    motor_setup();
-    IMU_setup();
-}
-
 
 void loop() {
- AP_loop();
- check_IMU();
- 
+
+  // if there's data available, read a packet
+  int packetSize = Udp.parsePacket();
+  if (packetSize)
+  {
+    Serial.print("Received packet of size ");
+    Serial.println(packetSize);
+    Serial.print("From ");
+    IPAddress remoteIp = Udp.remoteIP();
+    Serial.print(remoteIp);
+    Serial.print(", port ");
+    Serial.println(Udp.remotePort());
+
+    // read the packet into packetBufffer
+    int len = Udp.read(packetBuffer, 255);
+    Robot_t = (Robot*)packetBuffer;
+   // if (len > 0) packetBuffer[len] = 0;
+    Serial.println("Contents:");
+    Serial.println(Robot_t->velo);
+    Serial.println(Robot_t->theta);
+    Serial.println(Robot_t->mode);
+
+    // send a reply, to the IP address and port that sent us the packet we received
+    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+    Udp.write(ReplyBuffer);
+    Udp.endPacket();
+  }
 }
+
 
 void printWiFiStatus() {
   // print the SSID of the network you're attached to:
@@ -168,21 +104,4 @@ void printWiFiStatus() {
   Serial.print("signal strength (RSSI):");
   Serial.print(rssi);
   Serial.println(" dBm");
-  // print where to go in a browser:
-  Serial.print("To see this page in action, open a browser to http://");
-  Serial.println(ip);
-
-}
-
-void printMacAddress(byte mac[]) {
-  for (int i = 5; i >= 0; i--) {
-    if (mac[i] < 16) {
-      Serial.print("0");
-    }
-    Serial.print(mac[i], HEX);
-    if (i > 0) {
-      Serial.print(":");
-    }
-  }
-  Serial.println();
 }
