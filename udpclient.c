@@ -23,12 +23,13 @@ void error(char *msg) {
     exit(0);
 }
 
-  struct Robot
+  typedef struct Robot
   {
-       double velo;
-      double theta;
+      float velo;
+      float theta;
       uint16_t mode;
-  };
+  }__attribute__((packed)) Robot_t;
+
 	
 int main(int argc, char **argv) {
     int sockfd, portno, n;
@@ -66,13 +67,15 @@ int main(int argc, char **argv) {
     serveraddr.sin_port = htons(portno);
 
     /* get a message from the user */
-    bzero(buf, BUFSIZE);
-    printf("Please enter msg: ");
-    fgets(buf, BUFSIZE, stdin);
-
+   // bzero(buf, BUFSIZE);
+    //printf("Please enter msg: ");
+    //fgets(buf, BUFSIZE, stdin);
+    memset(&Robot_t, 0, sizeof(Robot_t));
+    scanf("%f %f %d", &(Robot_t.velo), &(Robot_t.theta), &(Robot_t.mode));
+	
     /* send the message to the server */
     serverlen = sizeof(serveraddr);
-    n = sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
+    n = sendto(sockfd, &Robot_t, strlen(Robot_t), 0, &serveraddr, serverlen);
     if (n < 0) 
       error("ERROR in sendto");
     
