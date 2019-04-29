@@ -1,14 +1,13 @@
-
 #include <SPI.h>
 #include <WiFi101.h>
 #include <WiFiUdp.h>
 #include <math.h>
 
 int status = WL_IDLE_STATUS;
-#include "arduino_secrets.h" 
+
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = SECRET_SSID;        // your network SSID (name)
-char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
+char ssid[] = "marcanton21";        // your network SSID (name)
+char pass[] = "ca11201980";    // your network password (use for WPA, or use as key for WEP)
 int keyIndex = 0;            // your network key Index number (needed only for WEP)
 
 unsigned int localPort = 2390;      // local port to listen on
@@ -25,7 +24,11 @@ char  ReplyBuffer[] = "acknowledged";       // a string to send back
 
 WiFiUDP Udp;
 
-void setup() {
+double tick = 0;
+boolean A, B;  
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+void setup()
+{
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
   WiFi.setPins(8, 7, 4, 2);
@@ -56,11 +59,70 @@ void setup() {
   Serial.println("\nStarting connection to server...");
   // if you get a connection, report back via serial:
   Udp.begin(localPort);
+ 
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+  pinMode(14, INPUT_PULLUP);//IR sensor pins
+  pinMode(15, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(14),IR1,RISING);//interrupt pins for IR sensor
+  attachInterrupt(digitalPinToInterrupt(15),IR2,RISING); 
 }
 
-void loop() {
+void IR1()
+{
+  A = digitalRead(14); // read signal from sensor
+  if (A == HIGH) tick ++;  // count timer tick
+}
 
-  // if there's data available, read a packet
+void IR2()
+{
+  B = digitalRead(15); // read signal from sensor
+  if (B == HIGH) tick ++;  // count timer tick
+}
+
+int setSpeed(float s)
+{
+  if (s > 1)  s = 1.0;
+  if (s < 0) s = 0.0; 
+  int out = (int)(s * 255.0);
+  return out;
+}
+
+void setVelocity(float v)
+{
+  float s = v;
+  if (s < 0)  s = -s;
+  int sp = setSpeed(s);
+  bool a = LOW;
+  bool b = LOW;
+  if (v >= 0)
+  { a = HIGH;
+    b = LOW;
+  }
+  else
+  { a = LOW;
+    b = HIGH;
+  }
+
+  if (HIGH == a)
+  { analogWrite(5, 0); // set Bpin to low
+    analogWrite(6, sp);
+    analogWrite(10, 0); // set Bpin to low
+    analogWrite(9, sp);
+  } // wrie analog value (PWM) to Apin. value − the duty cycle: between 0 (always off) and 255 (always on).
+  else
+  { analogWrite(6, 0);
+    analogWrite(5, sp);
+    analogWrite(9, 0);
+    analogWrite(10, sp);
+  }
+}
+
+void udp()
+{
+   // if there's data available, read a packet
   int packetSize = Udp.parsePacket();
   if (packetSize)
   {
@@ -88,7 +150,6 @@ void loop() {
   }
 }
 
-
 void printWiFiStatus() {
   // print the SSID of the network you're attached to:
   Serial.print("SSID: ");
@@ -104,4 +165,13 @@ void printWiFiStatus() {
   Serial.print("signal strength (RSSI):");
   Serial.print(rssi);
   Serial.println(" dBm");
+}
+void loop()
+{
+  while (1)
+  {
+    udp();
+    setVelocity(Robot_t->velo); 
+  }
+
 }
