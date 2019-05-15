@@ -10,35 +10,38 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
+#include <ncurses.h>
 
 #define BUFSIZE 1024
 
 /* 
  * error - wrapper for perror
  */
-
 void error(char *msg) {
     perror(msg);
     exit(0);
 }
 
- struct __attribute__((packed)) Robot
-  {
-      float velo;
-      float theta;
-      uint16_t mode;
-  }Robot_t;
+struct __attribute__((__packed__)) Robot
+{
+  float velo;
+  float theta;
+};
 
-	
-int main(int argc, char **argv) {
+void send_Robot(struct Robot c, int sockfd, struct sockaddr_in serveraddr);
+
+int main(int argc, char **argv)
+{
     int sockfd, portno, n;
     int serverlen;
     struct sockaddr_in serveraddr;
     struct hostent *server;
     char *hostname;
-    char buf[BUFSIZE];
+    int key;
+    struct Robot input_Robot = {0.0f, 0.0f};
+    //struct robot_info cur_info;
 
-    /* check command line arguments */
+    /* check Robot line arguments */
     if (argc != 3) {
        fprintf(stderr,"usage: %s <hostname> <port>\n", argv[0]);
        exit(0);
@@ -65,23 +68,18 @@ int main(int argc, char **argv) {
 	  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
     serveraddr.sin_port = htons(portno);
 
-    /* get a message from the user */
-   // bzero(buf, BUFSIZE);
-    //printf("Please enter msg: ");
-    //fgets(buf, BUFSIZE, stdin);
-    memset(&Robot_t, 0, sizeof(Robot_t));
-    scanf("%f %f %d", &(Robot_t.velo), &(Robot_t.theta), &(Robot_t.mode));
-	
-    /* send the message to the server */
-    serverlen = sizeof(serveraddr);
-    n = sendto(sockfd, &Robot_t, sizeof(Robot_t), 0, &serveraddr, serverlen);
-    if (n < 0) 
-      error("ERROR in sendto");
-    
-    /* print the server's reply */
-    n = recvfrom(sockfd, buf, 20, 0, &serveraddr, &serverlen);
-    if (n < 0) 
-      error("ERROR in recvfrom");
-    printf("Echo from server: %s \n", buf);
+    scanf("%f %f", &(input_Robot.velo), &(input_Robot.theta));
+		send_Robot(input_Robot, sockfd, serveraddr);
+
     return 0;
 }
+
+void send_Robot(struct Robot c, int sockfd, struct sockaddr_in serveraddr)
+{
+	int serverlen = sizeof(serveraddr);
+	/* send the message to the server */
+	if (sendto(sockfd, &c, sizeof(c), 0, &serveraddr, serverlen) < 0)
+		error("ERROR in sendto");
+}
+
+
